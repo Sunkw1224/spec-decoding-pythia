@@ -19,7 +19,7 @@ for L in 64 128 256 512; do
         --prompt-tokens 64 \
         --prompt-offset 256 \
         --max-new-tokens $L \
-        --K 5 --max-ngram-size 3 \
+        --K 3 --max-ngram-size 2 \
         --n-runs 3 \
         --output-csv "results/wikitext_len${L}.csv" \
         | tee "results/wikitext_len${L}.log"
