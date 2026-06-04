@@ -28,6 +28,7 @@ from typing import Optional
 import torch
 from tqdm import tqdm
 
+from .data import load_wikitext_text
 from .utils import load_model_and_tokenizer, set_seed
 
 
@@ -83,15 +84,6 @@ def compute_ppl_sliding(
     total_nll = torch.stack(nlls).sum()
     ppl = torch.exp(total_nll / seq_len).item()
     return ppl
-
-
-def load_wikitext_text(subset: str, split: str = "test") -> str:
-    """合并 wikitext 的所有非空行成一整段文本。"""
-    from datasets import load_dataset
-
-    ds = load_dataset("wikitext", subset, split=split)
-    texts = [t for t in ds["text"] if t.strip()]
-    return "\n\n".join(texts)
 
 
 def main() -> None:

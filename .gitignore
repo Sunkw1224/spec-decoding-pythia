@@ -1,6 +1,9 @@
 # ----- Claude Code 工作目录(必须忽略,内含子代理临时仓库)-----
 .claude/
 
+# ----- 私人技术指南,不进公开提交 -----
+GUIDE.md
+
 # ----- Python -----
 __pycache__/
 *.py[cod]

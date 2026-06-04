@@ -37,6 +37,7 @@ from typing import Callable, Dict, List, Optional
 import torch
 
 from .baseline import GenerationResult, greedy_generate
+from .data import load_wikitext_text, slice_prompts
 from .pld import pld_generate
 from .utils import load_model_and_tokenizer, set_seed
 
@@ -209,7 +210,19 @@ def save_csv(results: List[Dict[str, RunStats]], path: Path) -> None:
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-def _load_prompts(args: argparse.Namespace) -> List[str]:
+def _load_prompts(args: argparse.Namespace, tokenizer=None) -> List[str]:
+    """三种来源,优先级:--dataset wikitext > --prompt-file > --prompt > 内置默认。"""
+    if args.dataset == "wikitext":
+        assert tokenizer is not None, "wikitext 模式需要先加载 tokenizer"
+        print(f"[data] wikitext/{args.subset}/{args.split} "
+              f"→ {args.num_prompts} 段 × {args.prompt_tokens} token")
+        text = load_wikitext_text(args.subset, args.split)
+        return slice_prompts(
+            text, tokenizer,
+            n_prompts=args.num_prompts,
+            tokens_per_prompt=args.prompt_tokens,
+            start_offset_tokens=args.prompt_offset,
+        )
     if args.prompt_file:
         text = Path(args.prompt_file).read_text(encoding="utf-8")
         # 以空行分隔多条 prompt
@@ -230,6 +243,17 @@ def main() -> None:
     p.add_argument("--model", default="EleutherAI/pythia-70m")
     p.add_argument("--prompt", type=str, default=None, help="单条 prompt 文本")
     p.add_argument("--prompt-file", type=str, default=None, help="prompt 文件,空行分隔多条")
+    # WikiText 数据源(与 eval_ppl.py 共用 data.py)
+    p.add_argument("--dataset", choices=["none", "wikitext"], default="none")
+    p.add_argument("--subset", default="wikitext-2-raw-v1",
+                   help="wikitext-2-raw-v1 / wikitext-103-raw-v1")
+    p.add_argument("--split", default="test")
+    p.add_argument("--num-prompts", type=int, default=6,
+                   help="从 WikiText 切多少段做 prompt")
+    p.add_argument("--prompt-tokens", type=int, default=64,
+                   help="每段 prompt 的 token 数")
+    p.add_argument("--prompt-offset", type=int, default=0,
+                   help="跳过 text 开头的 N 个 token")
     p.add_argument("--max-new-tokens", type=int, default=128)
     p.add_argument("--K", type=int, default=5, help="每步候选 token 数")
     p.add_argument("--max-ngram-size", type=int, default=3)
@@ -245,7 +269,7 @@ def main() -> None:
     model, tokenizer, device, dtype = load_model_and_tokenizer(args.model)
     print(f"       device={device} dtype={dtype}")
 
-    prompts = _load_prompts(args)
+    prompts = _load_prompts(args, tokenizer=tokenizer)
     print(f"[bench] {len(prompts)} prompt(s), K={args.K}, "
           f"max_new={args.max_new_tokens}, n_runs={args.n_runs}")
 
